@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  /* York Dark Mode is the default and only experience for v1. */
+  background-color: #060d24;
+}
+
+body {
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Visible keyboard focus everywhere — required for WCAG 2.4.7 */
+:focus-visible {
+  outline: 2px solid #e79b2d;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Backdrop used behind hero sections and the header */
+.bg-york-grid-surface {
+  background-color: #060d24;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Recommended-timeslot animated border, used on the availability matrix and
+   the featured-poll hero card. Respects reduced-motion below. */
+@keyframes york-recommend-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(231, 155, 45, 0.55), 0 0 18px rgba(231, 155, 45, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 0 1.5px rgba(240, 167, 60, 0.85), 0 0 28px rgba(231, 155, 45, 0.4);
+  }
+}
+
+.york-recommended {
+  animation: york-recommend-pulse 2.4s ease-in-out infinite;
+  border-color: rgba(231, 155, 45, 0.7) !important;
+}
+
+/* Gold glow for the single most-popular column/cell */
+.york-glow {
+  box-shadow: 0 0 0 1px rgba(231, 155, 45, 0.35), 0 0 16px rgba(231, 155, 45, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .york-recommended {
+    animation: none;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+}
+
+/* Sticky matrix headers */
+.matrix-scroll {
+  overflow: auto;
+  max-height: 70vh;
+}
+.matrix-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.matrix-scroll th.sticky-col,
+.matrix-scroll td.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+
+/* Secondary-nav horizontal scroll on mobile without visible scrollbar chrome */
+.york-nav-scroll {
+  scrollbar-width: none;
+}
+.york-nav-scroll::-webkit-scrollbar {
+  display: none;
+}

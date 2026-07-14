@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum AdminStatus {
+  PENDING // invited, hasn't set a password yet
+  ACTIVE
+  REVOKED // access removed; row (and their polls) kept for history
+}
+
+// ---------------------------------------------------------------------------
+// Admin — the only authenticated role. Participants never get an account.
+// New admins are created via an invite flow (src/app/api/admins) rather
+// than open signup — passwordHash is null until the invite is accepted.
+// ---------------------------------------------------------------------------
+model Admin {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String?
+  name         String?
+  status       AdminStatus @default(ACTIVE)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  inviteToken          String?   @unique
+  inviteTokenExpiresAt DateTime?
+  invitedById          String?
+  invitedBy            Admin?    @relation("AdminInvites", fields: [invitedById], references: [id], onDelete: SetNull)
+  invited              Admin[]   @relation("AdminInvites")
+
+  polls Poll[]
+
+  @@map("admins")
+}
+
+enum PollStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum Cadence {
+  ONE_OFF
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+// ---------------------------------------------------------------------------
+// Poll — one shareable scheduling request. The `slug` is the unguessable
+// token embedded in the public link (/poll/[slug]).
+// ---------------------------------------------------------------------------
+model Poll {
+  id          String     @id @default(cuid())
+  slug        String     @unique @default(cuid())
+  title       String
+  description String?
+  cadence     Cadence    @default(ONE_OFF)
+  status      PollStatus @default(ACTIVE)
+  timezone    String     @default("UTC")
+
+  rangeStart DateTime?
+  rangeEnd   DateTime?
+
+  // Admin-config toggles
+  allowEditAfterSubmit Boolean @default(true)
+  requireEmail         Boolean @default(false)
+  notifyOnResponse     Boolean @default(true)
+  notifyOnComplete     Boolean @default(true)
+  dailySummary         Boolean @default(false)
+  captchaEnabled       Boolean @default(false)
+  logoUrl              String?
+
+  adminId String
+  admin   Admin  @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  timeslots    Timeslot[]
+  participants Participant[]
+  invitations  Invitation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  archivedAt DateTime?
+
+  @@index([adminId, status])
+  @@map("polls")
+}
+
+// ---------------------------------------------------------------------------
+// Timeslot — one candidate meeting time on a poll.
+// ---------------------------------------------------------------------------
+model Timeslot {
+  id        String   @id @default(cuid())
+  pollId    String
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  startsAt  DateTime
+  endsAt    DateTime
+  label     String? // optional display override, e.g. "Site walk – Bldg B"
+  sortOrder Int      @default(0)
+
+  responses Response[]
+
+  createdAt DateTime @default(now())
+
+  @@index([pollId, startsAt])
+  @@map("timeslots")
+}
+
+// ---------------------------------------------------------------------------
+// Participant — identified by name (+ optional email), scoped to one poll.
+// No password, no account — just a per-poll identity plus a private edit
+// token so they can return to the same link and update their answers.
+// ---------------------------------------------------------------------------
+model Participant {
+  id        String  @id @default(cuid())
+  pollId    String
+  poll      Poll    @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  name      String
+  email     String?
+  editToken String  @unique @default(cuid())
+  role      String? // e.g. "Consultant", "Architect", "Subcontractor"
+
+  responses Response[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pollId, name])
+  @@index([pollId])
+  @@map("participants")
+}
+
+enum Availability {
+  YES
+  MAYBE
+  NO
+}
+
+// ---------------------------------------------------------------------------
+// Response — one participant's answer for one timeslot.
+// ---------------------------------------------------------------------------
+model Response {
+  id            String       @id @default(cuid())
+  participantId String
+  participant   Participant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  timeslotId    String
+  timeslot      Timeslot     @relation(fields: [timeslotId], references: [id], onDelete: Cascade)
+  availability  Availability @default(YES)
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([participantId, timeslotId])
+  @@index([timeslotId])
+  @@map("responses")
+}
+
+enum InvitationStatus {
+  PENDING
+  SENT
+  OPENED
+  RESPONDED
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Invitation — tracks optional email invites/reminders sent for a poll.
+// ---------------------------------------------------------------------------
+model Invitation {
+  id        String           @id @default(cuid())
+  pollId    String
+  poll      Poll             @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  name      String
+  email     String
+  status    InvitationStatus @default(PENDING)
+  sentAt    DateTime?
+  remindedAt DateTime?
+  openedAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([pollId])
+  @@map("invitations")
+}
