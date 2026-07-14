@@ -69,3 +69,25 @@ export const acceptInviteSchema = z.object({
 
 export type CreatePollInput = z.infer<typeof createPollSchema>;
 export type SubmitResponseInput = z.infer<typeof submitResponseSchema>;
+
+export function adminInviteEmail(inviterName: string, acceptUrl: string) {
+  return {
+    subject: `You've been invited to York Central Scheduling`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#060D24;padding:32px;border-radius:12px">
+        <div style="color:#E79B2D;font-size:11px;font-weight:700;letter-spacing:0.2em;margin-bottom:12px">YORK CENTRAL</div>
+        <h2 style="color:#FFFFFF">You're invited to the scheduling dashboard</h2>
+        <p style="color:#C7CDD9">${inviterName} has invited you to help manage coordination polls
+        on York Central Scheduling. Click below to set your password and get started.</p>
+        <p style="margin:24px 0">
+          <a href="${acceptUrl}" style="background:#E79B2D;color:#060D24;padding:12px 24px;font-weight:700;
+            border-radius:6px;text-decoration:none;display:inline-block">
+            Accept invitation
+          </a>
+        </p>
+        <p style="color:#8892A6;font-size:13px">Or copy this link: ${acceptUrl}</p>
+        <p style="color:#8892A6;font-size:12px">This invite link expires in 7 days.</p>
+      </div>
+    `,
+  };
+}
